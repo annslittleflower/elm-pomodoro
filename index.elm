@@ -26,7 +26,7 @@ init : ( Model, Cmd Msg )
 init = ( {
   text = "Please press Start Work when you ready",
   timeToRest = 10,
-  countOfPomodoro = 1,
+  countOfPomodoro = 0,
   timeToWork = 3,
   isButtonDisabled = False,
   timerCount = 0,
@@ -44,17 +44,16 @@ view model =
     if model.isButtonDisabled == False || model.isRestingNow == True then
         div []
             [
-              button [ onClick Disable ] [ text "Start work" ],
+              button [ onClick Disable, disabled (model.timeToRest - model.restingTimerCount < 10) ] [ text "Start work" ],
               p [] [text model.text]
             ]
     else
         div []
             [
-              button [ onClick Expand, disabled (model.isButtonDisabled == True || model.isRestingNow == True) ] [ text "Working..." ],
+              button [ onClick Expand, disabled model.isButtonDisabled ] [ text "Working..." ],
               p [] [text ("Time left to work: "
-                ++ (toString (model.timeToWork - model.timerCount)) ++ " --- "
-                ++ (toString (model.countOfPomodoro)) ++ " --- "
-                ++ (toString (model.timerStarted)))
+                ++ (toString (model.timeToWork - model.timerCount)))
+
                 ]
             ]
 
@@ -78,19 +77,19 @@ update msg model =
 
             let incrementedTimerWorking = if(isRestingNow == False && model.timeToWork - model.timerCount > 0) then model.timerCount + 1 else 0
             in
-            let incrementedRestingTimer = if(isRestingNow == True && model.timeToRest - model.restingTimerCount >= 0) then model.restingTimerCount + 1 else 0
+            let incrementedRestingTimer = if(isRestingNow == True && model.timeToRest - model.restingTimerCount > 0) then model.restingTimerCount + 1 else 0
             in
 
 
 
-            let countOfPomodoroNew = if model.timeToWork - model.timerCount == 0
+            let countOfPomodoroNew = if model.timeToWork - incrementedTimerWorking == 0
             then
             model.countOfPomodoro + 1 else model.countOfPomodoro
             in
 
 
 
-            let isRestingNowNew = if ((model.countOfPomodoro) % 4 == 0 && model.timeToWork - model.timerCount == 0)
+            let isRestingNowNew = if ((model.countOfPomodoro) % 4 == 0  &&  incrementedTimerWorking == 0  )
                     then
                       True
                     else False
@@ -98,17 +97,18 @@ update msg model =
 
 
 
-             let shouldStopTimer = if (model.timeToRest - model.restingTimerCount <= 1 && isRestingNow == True || model.timeToWork - model.timerCount == 0) then False else True
-             in
-
-
-             let isStopWorking = if (model.timeToWork - model.timerCount == 0 ) then False else True
+             let shouldStopTimer = if (( isRestingNowNew == False && model.timeToWork - model.timerCount == 0) || (isRestingNowNew == True && model.timeToRest - model.restingTimerCount == 0)) then False else True
              in
 
 
 
+             let isStopWorking = if (model.timeToWork - model.timerCount == 0 && isRestingNow == False) then False else True
+             in
 
-            let willButtonBeDisabled = if isStopWorking == True || isRestingNowNew == True then
+
+
+
+            let willButtonBeDisabled = if isStopWorking == True || isRestingNowNew == True || incrementedTimerWorking /= 0 then
                   True else False
             in
 
@@ -118,7 +118,7 @@ update msg model =
                   countOfPomodoro = countOfPomodoroNew,
                   isButtonDisabled = willButtonBeDisabled,
                   text =
-                  if isRestingNowNew == True && (model.timeToRest - model.restingTimerCount /= 1)
+                  if isRestingNowNew == True && (model.timeToRest - model.restingTimerCount > 0)
                   then
                   "Rest now for " ++ toString(model.timeToRest - model.restingTimerCount) ++ " seconds"
                   else "Please press Start Work when you ready",
